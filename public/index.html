@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aria · AI Chatbot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #16181f;
+    --panel-2: #1d2029;
+    --border: #262a35;
+    --text: #e7e9ee;
+    --muted: #9aa0ad;
+    --accent: #7c5cff;
+    --accent-2: #a68bff;
+    --user-bubble: #7c5cff;
+    --bot-bubble: #1d2029;
+    --danger: #ff5c72;
+    --radius: 16px;
+    --shadow: 0 10px 40px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #241f3d 0%, transparent 60%), var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: margin-left .25s ease;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 18px 18px 14px;
+  }
+  .brand .logo {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center; font-weight: 700; color: white;
+    box-shadow: 0 4px 14px rgba(124,92,255,.5);
+  }
+  .brand h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  .brand span { font-size: 12px; color: var(--muted); }
+  .new-chat {
+    margin: 6px 14px 12px;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    border-radius: 12px;
+    cursor: pointer;
+    font: inherit; font-weight: 500;
+    display: flex; align-items: center; gap: 8px; justify-content: center;
+    transition: .15s;
+  }
+  .new-chat:hover { border-color: var(--accent); background: #23202f; }
+  .conv-list { flex: 1; overflow-y: auto; padding: 4px 10px 14px; }
+  .conv {
+    padding: 10px 12px; border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--muted); font-size: 14px;
+    position: relative; transition: .12s;
+  }
+  .conv:hover { background: var(--panel-2); color: var(--text); }
+  .conv.active { background: #23202f; color: var(--text); }
+  .conv .title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conv .del {
+    opacity: 0; border: none; background: transparent; color: var(--muted);
+    cursor: pointer; font-size: 15px; padding: 2px 4px; border-radius: 6px;
+  }
+  .conv:hover .del { opacity: 1; }
+  .conv .del:hover { color: var(--danger); background: rgba(255,92,114,.12); }
+  .sidebar-foot { padding: 12px 18px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    display: none;
+    align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  .icon-btn {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-size: 18px;
+    display: grid; place-items: center;
+  }
+
+  .chat { flex: 1; overflow-y: auto; padding: 28px 0; scroll-behavior: smooth; }
+  .chat-inner { max-width: 780px; margin: 0 auto; padding: 0 20px; }
+
+  .welcome { text-align: center; margin: 8vh auto; max-width: 560px; }
+  .welcome .logo-lg {
+    width: 64px; height: 64px; border-radius: 18px; margin: 0 auto 18px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center; font-size: 28px; color: white;
+    box-shadow: 0 10px 30px rgba(124,92,255,.5);
+  }
+  .welcome h2 { font-size: 26px; margin: 0 0 8px; }
+  .welcome p { color: var(--muted); margin: 0 0 26px; line-height: 1.5; }
+  .suggestions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .suggestion {
+    text-align: left; padding: 14px 16px; border: 1px solid var(--border);
+    background: var(--panel); border-radius: 14px; cursor: pointer; color: var(--text);
+    font: inherit; transition: .15s;
+  }
+  .suggestion:hover { border-color: var(--accent); transform: translateY(-2px); background: var(--panel-2); }
+  .suggestion strong { display: block; font-size: 14px; margin-bottom: 3px; }
+  .suggestion span { font-size: 13px; color: var(--muted); }
+
+  .msg { display: flex; gap: 14px; margin-bottom: 24px; animation: rise .3s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    display: grid; place-items: center; font-size: 14px; font-weight: 600;
+  }
+  .msg.user .avatar { background: #2a2f3a; color: var(--text); }
+  .msg.assistant .avatar { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; }
+  .bubble { padding-top: 4px; line-height: 1.6; font-size: 15px; max-width: 100%; }
+  .msg.user .bubble { color: var(--text); }
+  .bubble p { margin: 0 0 10px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble ul, .bubble ol { margin: 6px 0 10px; padding-left: 22px; }
+  .bubble li { margin: 3px 0; }
+  .bubble code {
+    background: #0c0d11; border: 1px solid var(--border); padding: 1px 6px;
+    border-radius: 6px; font-size: 13px; font-family: ui-monospace, monospace;
+  }
+  .bubble pre {
+    background: #0c0d11; border: 1px solid var(--border); padding: 14px;
+    border-radius: 10px; overflow-x: auto; margin: 8px 0;
+  }
+  .bubble pre code { border: none; padding: 0; background: none; }
+  .role-name { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+
+  .typing { display: inline-flex; gap: 5px; padding: 6px 0; }
+  .typing span {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--muted);
+    animation: blink 1.3s infinite both;
+  }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+  /* Composer */
+  .composer-wrap { padding: 12px 20px 20px; background: linear-gradient(transparent, var(--bg) 40%); }
+  .composer {
+    max-width: 780px; margin: 0 auto; display: flex; align-items: flex-end; gap: 10px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+    padding: 8px 8px 8px 16px; box-shadow: var(--shadow);
+    transition: border-color .15s;
+  }
+  .composer:focus-within { border-color: var(--accent); }
+  .composer textarea {
+    flex: 1; resize: none; border: none; outline: none; background: transparent;
+    color: var(--text); font: inherit; font-size: 15px; line-height: 1.5;
+    max-height: 180px; padding: 8px 0;
+  }
+  .composer textarea::placeholder { color: var(--muted); }
+  .send {
+    width: 40px; height: 40px; border-radius: 12px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white;
+    display: grid; place-items: center; font-size: 17px; flex-shrink: 0;
+    transition: .15s;
+  }
+  .send:disabled { opacity: .4; cursor: not-allowed; }
+  .send:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(124,92,255,.5); }
+  .hint { text-align: center; font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+  .backdrop { display: none; }
+
+  @media (max-width: 760px) {
+    .sidebar {
+      position: fixed; z-index: 30; height: 100%; margin-left: -300px; box-shadow: var(--shadow);
+    }
+    .sidebar.open { margin-left: 0; }
+    .topbar { display: flex; }
+    .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 20; }
+    .suggestions { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <h1>Aria</h1>
+        <span>AI Assistant</span>
+      </div>
+    </div>
+    <button class="new-chat" id="newChat">＋ New chat</button>
+    <div class="conv-list" id="convList"></div>
+    <div class="sidebar-foot">Conversations are saved locally to this app.</div>
+  </aside>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="icon-btn" id="menuBtn">☰</button>
+      <strong>Aria</strong>
+    </div>
+    <div class="chat" id="chat">
+      <div class="chat-inner" id="chatInner"></div>
+    </div>
+    <div class="composer-wrap">
+      <div class="composer">
+        <textarea id="input" rows="1" placeholder="Message Aria…"></textarea>
+        <button class="send" id="send" title="Send">➤</button>
+      </div>
+      <div class="hint">Aria can make mistakes. Double-check important info.</div>
+    </div>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const chatInner = $("#chatInner");
+const input = $("#input");
+const sendBtn = $("#send");
+const convList = $("#convList");
+
+let currentId = null;
+let sending = false;
+
+// ---------- Markdown-lite rendering ----------
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function renderMarkdown(text) {
+  // code blocks
+  const blocks = [];
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    blocks.push(`<pre><code>${escapeHtml(code.replace(/\n$/, ""))}</code></pre>`);
+    return ` ${blocks.length - 1} `;
+  });
+  text = escapeHtml(text);
+  text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
+  text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  text = text.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+
+  // lists + paragraphs
+  const lines = text.split("\n");
+  let html = "", inList = false, listTag = "";
+  for (let line of lines) {
+    const ul = line.match(/^\s*[-*]\s+(.*)/);
+    const ol = line.match(/^\s*\d+\.\s+(.*)/);
+    if (ul || ol) {
+      const tag = ul ? "ul" : "ol";
+      if (!inList) { html += `<${tag}>`; inList = true; listTag = tag; }
+      html += `<li>${(ul || ol)[1]}</li>`;
+    } else {
+      if (inList) { html += `</${listTag}>`; inList = false; }
+      if (line.trim()) html += `<p>${line}</p>`;
+    }
+  }
+  if (inList) html += `</${listTag}>`;
+  html = html.replace(/ (\d+) /g, (_, i) => blocks[i]);
+  return html;
+}
+
+function addMessage(role, content) {
+  const wrap = document.createElement("div");
+  wrap.className = `msg ${role}`;
+  const name = role === "user" ? "You" : "Aria";
+  wrap.innerHTML = `
+    <div class="avatar">${role === "user" ? "🧑" : "A"}</div>
+    <div class="bubble">
+      <div class="role-name">${name}</div>
+      <div class="content">${role === "assistant" ? renderMarkdown(content) : escapeHtml(content).replace(/\n/g, "<br>")}</div>
+    </div>`;
+  chatInner.appendChild(wrap);
+  scrollDown();
+  return wrap;
+}
+
+function showTyping() {
+  const wrap = document.createElement("div");
+  wrap.className = "msg assistant";
+  wrap.id = "typing";
+  wrap.innerHTML = `
+    <div class="avatar">A</div>
+    <div class="bubble">
+      <div class="role-name">Aria</div>
+      <div class="typing"><span></span><span></span><span></span></div>
+    </div>`;
+  chatInner.appendChild(wrap);
+  scrollDown();
+}
+function removeTyping() { document.getElementById("typing")?.remove(); }
+function scrollDown() { const c = $("#chat"); c.scrollTop = c.scrollHeight; }
+
+function showWelcome() {
+  chatInner.innerHTML = `
+    <div class="welcome">
+      <div class="logo-lg">A</div>
+      <h2>How can I help today?</h2>
+      <p>I'm Aria — ask me anything, brainstorm ideas, get code, or just chat.</p>
+      <div class="suggestions">
+        <button class="suggestion" data-q="Explain quantum computing in simple terms">
+          <strong>Explain a concept</strong><span>Quantum computing, simply</span>
+        </button>
+        <button class="suggestion" data-q="Write a haiku about the ocean at dawn">
+          <strong>Get creative</strong><span>A haiku about the ocean</span>
+        </button>
+        <button class="suggestion" data-q="Give me a 3-day healthy meal plan">
+          <strong>Make a plan</strong><span>A 3-day meal plan</span>
+        </button>
+        <button class="suggestion" data-q="Write a JavaScript function to debounce a callback">
+          <strong>Write code</strong><span>A debounce function in JS</span>
+        </button>
+      </div>
+    </div>`;
+  chatInner.querySelectorAll(".suggestion").forEach((b) =>
+    b.addEventListener("click", () => { input.value = b.dataset.q; send(); })
+  );
+}
+
+// ---------- Data ----------
+async function loadConversations() {
+  const res = await fetch("/api/conversations");
+  const convs = await res.json();
+  convList.innerHTML = "";
+  convs.forEach((c) => {
+    const el = document.createElement("div");
+    el.className = "conv" + (c.id === currentId ? " active" : "");
+    el.innerHTML = `<span class="title">${escapeHtml(c.title || "New chat")}</span><button class="del" title="Delete">✕</button>`;
+    el.querySelector(".title").addEventListener("click", () => openConversation(c.id));
+    el.querySelector(".del").addEventListener("click", (e) => { e.stopPropagation(); deleteConversation(c.id); });
+    convList.appendChild(el);
+  });
+}
+
+async function openConversation(id) {
+  currentId = id;
+  closeSidebar();
+  const res = await fetch(`/api/conversations/${id}/messages`);
+  const msgs = await res.json();
+  chatInner.innerHTML = "";
+  if (!msgs.length) showWelcome();
+  else msgs.forEach((m) => addMessage(m.role, m.content));
+  loadConversations();
+}
+
+async function deleteConversation(id) {
+  await fetch(`/api/conversations/${id}`, { method: "DELETE" });
+  if (id === currentId) { currentId = null; showWelcome(); }
+  loadConversations();
+}
+
+function newChat() {
+  currentId = null;
+  showWelcome();
+  loadConversations();
+  input.focus();
+}
+
+// ---------- Send ----------
+async function send() {
+  const text = input.value.trim();
+  if (!text || sending) return;
+  sending = true;
+  sendBtn.disabled = true;
+
+  if ($(".welcome")) chatInner.innerHTML = "";
+  addMessage("user", text);
+  input.value = "";
+  input.style.height = "auto";
+  showTyping();
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ conversationId: currentId, message: text }),
+    });
+    removeTyping();
+    if (!res.ok) throw new Error("Request failed");
+    const data = await res.json();
+    currentId = data.conversationId;
+    addMessage("assistant", data.reply);
+    loadConversations();
+  } catch (err) {
+    removeTyping();
+    addMessage("assistant", "⚠️ Sorry, I couldn't reach the server. Please try again.");
+  } finally {
+    sending = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+// ---------- Events ----------
+sendBtn.addEventListener("click", send);
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+input.addEventListener("input", () => {
+  input.style.height = "auto";
+  input.style.height = Math.min(input.scrollHeight, 180) + "px";
+});
+$("#newChat").addEventListener("click", newChat);
+
+// Mobile sidebar
+const sidebar = $("#sidebar"), backdrop = $("#backdrop");
+function openSidebar() { sidebar.classList.add("open"); backdrop.classList.add("show"); }
+function closeSidebar() { sidebar.classList.remove("open"); backdrop.classList.remove("show"); }
+$("#menuBtn").addEventListener("click", openSidebar);
+backdrop.addEventListener("click", closeSidebar);
+
+// Init
+showWelcome();
+loadConversations();
+input.focus();
+</script>
+</body>
+</html>
